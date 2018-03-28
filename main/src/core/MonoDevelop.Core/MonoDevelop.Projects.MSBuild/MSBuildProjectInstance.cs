@@ -59,9 +59,10 @@ namespace MonoDevelop.Projects.MSBuild
 		public void Dispose ()
 		{
 			if (projectInstance != null) {
-				engine.DisposeProjectInstance (projectInstance);
-				projectInstance = null;
-				engine = null;
+				using (engine.GetProjectInstanceDisposable (projectInstance)) {
+					projectInstance = null;
+					engine = null;
+				}
 			}
 		}
 
@@ -84,32 +85,36 @@ namespace MonoDevelop.Projects.MSBuild
 
 		public void Evaluate ()
 		{
-			if (projectInstance != null)
-				engine.DisposeProjectInstance (projectInstance);
+			IDisposable referencedItemsRefCounter = null;
+			if (projectInstance != null) {
+				referencedItemsRefCounter = engine.GetProjectInstanceDisposable (projectInstance);
+			}
 
-			info = msproject.LoadNativeInstance (!OnlyEvaluateProperties);
+			using (referencedItemsRefCounter) {
+				info = msproject.LoadNativeInstance (!OnlyEvaluateProperties);
 
-			engine = info.Engine;
-			projectInstance = engine.CreateProjectInstance (info.Project);
+				engine = info.Engine;
+				projectInstance = engine.CreateProjectInstance (info.Project);
 
-			try {
-				// Set properties defined by global property providers, and then
-				// properties explicitly set to this instance
+				try {
+					// Set properties defined by global property providers, and then
+					// properties explicitly set to this instance
 
-				foreach (var gpp in MSBuildProjectService.GlobalPropertyProviders) {
-					foreach (var prop in gpp.GetGlobalProperties ())
+					foreach (var gpp in MSBuildProjectService.GlobalPropertyProviders) {
+						foreach (var prop in gpp.GetGlobalProperties ())
+							engine.SetGlobalProperty (projectInstance, prop.Key, prop.Value);
+					}
+					foreach (var prop in globalProperties)
 						engine.SetGlobalProperty (projectInstance, prop.Key, prop.Value);
+
+					engine.Evaluate (projectInstance, OnlyEvaluateProperties);
+
+					SyncBuildProject (info.ItemMap, info.Engine, projectInstance);
+				} catch (Exception ex) {
+					// If the project can't be evaluated don't crash
+					LoggingService.LogError ("MSBuild project could not be evaluated", ex);
+					throw new ProjectEvaluationException (msproject, ex.Message);
 				}
-				foreach (var prop in globalProperties)
-					engine.SetGlobalProperty (projectInstance, prop.Key, prop.Value);
-
-				engine.Evaluate (projectInstance, OnlyEvaluateProperties);
-
-				SyncBuildProject (info.ItemMap, info.Engine, projectInstance);
-			} catch (Exception ex) {
-				// If the project can't be evaluated don't crash
-				LoggingService.LogError ("MSBuild project could not be evaluated", ex);
-				throw new ProjectEvaluationException (msproject, ex.Message);
 			}
 		}
 

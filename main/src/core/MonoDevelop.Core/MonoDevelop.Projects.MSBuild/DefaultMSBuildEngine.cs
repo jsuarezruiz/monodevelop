@@ -174,11 +174,28 @@ namespace MonoDevelop.Projects.MSBuild
 			return pi;
 		}
 
-		public override void DisposeProjectInstance (object projectInstance)
+
+		class ReferencedItemsDisposable : IDisposable
+		{
+			readonly DefaultMSBuildEngine engine;
+			readonly MSBuildProject[] info;
+			public ReferencedItemsDisposable (DefaultMSBuildEngine engine, ProjectInfo info)
+			{
+				this.engine = engine;
+				this.info = info.ReferencedProjects.ToArray ();
+			}
+
+			public void Dispose()
+			{
+				foreach (var p in info)
+					engine.UnloadProject (p);
+			}
+		}
+
+		public override IDisposable GetProjectInstanceDisposable (object projectInstance)
 		{
 			var pi = (ProjectInfo) projectInstance;
-			foreach (var p in pi.ReferencedProjects)
-				UnloadProject (p);
+			return new ReferencedItemsDisposable (this, pi);
 		}
 
 		public override void Evaluate (object projectInstance)
@@ -1057,14 +1074,6 @@ namespace MonoDevelop.Projects.MSBuild
 				project.ImportedProjects [import] = prefProjects = new List<ProjectInfo> ();
 			prefProjects.Add (imported);
         }
-
-		void DisposeImportedProjects (ProjectInfo pi)
-		{
-			foreach (var imported in pi.ImportedProjects.Values.SelectMany (i => i)) {
-				DisposeImportedProjects (imported);
-				DisposeProjectInstance (imported);
-			}
-		}
 
 		void Evaluate (ProjectInfo project, MSBuildEvaluationContext context, MSBuildImport import, bool evalItems)
 		{

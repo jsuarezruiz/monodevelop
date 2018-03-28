@@ -62,7 +62,7 @@ namespace MonoDevelop.Projects.MSBuild
 
 		public abstract object CreateProjectInstance (object project);
 
-		public abstract void DisposeProjectInstance (object projectInstance);
+		public abstract IDisposable GetProjectInstanceDisposable (object projectInstance);
 
 		public virtual void Evaluate (object projectInstance)
 		{

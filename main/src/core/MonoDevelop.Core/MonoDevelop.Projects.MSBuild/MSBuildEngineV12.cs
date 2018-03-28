@@ -71,8 +71,9 @@ namespace MonoDevelop.Projects.MSBuild
 			return project;
 		}
 
-		public override void DisposeProjectInstance (object projectInstance)
+		public override IDisposable GetProjectInstanceDisposable (object projectInstance)
 		{
+			return null;
 		}
 
 		public override string GetItemMetadata (object item, string name)
