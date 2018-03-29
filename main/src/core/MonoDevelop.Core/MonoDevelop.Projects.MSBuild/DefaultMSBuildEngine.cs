@@ -1280,7 +1280,7 @@ namespace MonoDevelop.Projects.MSBuild
 				project.Targets.Add (newTarget);
 		}
 
-		Dictionary<string, ConditionExpression> conditionCache = new Dictionary<string, ConditionExpression> ();
+		System.Collections.Immutable.ImmutableDictionary<string, ConditionExpression> conditionCache = System.Collections.Immutable.ImmutableDictionary<string, ConditionExpression>.Empty;
 		bool SafeParseAndEvaluate (ProjectInfo project, MSBuildEvaluationContext context, string condition, bool collectConditionedProperties = false, string customEvalBasePath = null)
 		{
 			try {
@@ -1291,10 +1291,9 @@ namespace MonoDevelop.Projects.MSBuild
 
 				try {
 					ConditionExpression ce;
-					lock (conditionCache) {
-						if (!conditionCache.TryGetValue (condition, out ce))
-							ce = ConditionParser.ParseCondition (condition);
-						conditionCache [condition] = ce;
+					if (!conditionCache.TryGetValue (condition, out ce)) {
+						ce = ConditionParser.ParseCondition (condition);
+						conditionCache = conditionCache.SetItem (condition, ce);
 					}
 
 					if (collectConditionedProperties)
