@@ -556,7 +556,10 @@ namespace MonoDevelop.Ide.Gui.Components
 			if (!string.IsNullOrEmpty (name) && monitor != null) {
 				var indent = monitor.Indent;
 				var t = indent.Indent ();
-				buffer.TagTable.Add (t);
+
+				if (buffer.TagTable.Lookup (t.Name) == null) {
+					buffer.TagTable.Add (t);
+				}
 				indents.Push (name);
 			} else
 				indents.Push (null);
@@ -604,7 +607,9 @@ namespace MonoDevelop.Ide.Gui.Components
 		{
 			if (indents.Count > 0 && indents.Pop () != null) {
 				if (monitor != null) {
-					buffer.TagTable.Remove (monitor.Indent.IndentTag);
+					if (buffer.TagTable.Lookup (monitor.Indent.IndentTag.Name) != null) {
+						buffer.TagTable.Remove (monitor.Indent.IndentTag);
+					}
 					monitor.Indent.Unindent ();
 				}
 			}
@@ -819,7 +824,6 @@ namespace MonoDevelop.Ide.Gui.Components
 					// create a unique tagname
 					// Fixes VSTS 584931
 					tag = new TextTag ($"{trackerID}-{indent}");
-					System.Console.WriteLine ($"{tag.Name}");
 					trackerID++;
 
 					tag.LeftMargin = 10 + 15 * (indent - 1);
